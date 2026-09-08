@@ -34,11 +34,13 @@ struct BoardView: View {
                     .allowsHitTesting(false)
             }
             .frame(width: side, height: side)
-            .clipShape(RoundedRectangle(cornerRadius: theme.corner * 0.7, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: frameRadius, style: .continuous))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .aspectRatio(1, contentMode: .fit)
     }
+
+    private var frameRadius: CGFloat { theme.corner * 0.7 }
 
     private func grid(side: CGFloat, cell: CGFloat) -> some View {
         Canvas { ctx, _ in
@@ -62,8 +64,10 @@ struct BoardView: View {
                 ctx.stroke(Path { $0.move(to: CGPoint(x: 0, y: y)); $0.addLine(to: CGPoint(x: side, y: y)) },
                            with: .color(theme.boxLine), lineWidth: 2)
             }
-            ctx.stroke(Path(CGRect(x: 1, y: 1, width: side - 2, height: side - 2)),
-                       with: .color(theme.boxLine), lineWidth: 2)
+            // 外框必须跟容器的 clipShape 用同一个圆角,画直角矩形的话四个角的描边会被裁掉
+            let outline = RoundedRectangle(cornerRadius: frameRadius, style: .continuous)
+            ctx.stroke(outline.path(in: CGRect(x: 1.5, y: 1.5, width: side - 3, height: side - 3)),
+                       with: .color(theme.boxLine), lineWidth: 3)
         }
     }
 
