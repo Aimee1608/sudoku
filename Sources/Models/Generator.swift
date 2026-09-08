@@ -43,13 +43,13 @@ struct Generator {
 
     /// 一次尝试:随机完整解 → 中心对称挖洞(每挖一对都验唯一解) → 评级。
     /// 命中不了目标难度就返回 nil,由调用方重试——难档本来就要碰运气。
-    func attempt(target: Difficulty, using rng: inout SplitMix64) -> Puzzle? {
+    func attempt(target: Difficulty, using rng: inout SplitMix64, clueFloor: Int? = nil) -> Puzzle? {
         let solution = solver.randomSolution(using: &rng)
         guard !solution.contains(0) else { return nil }
 
         var grid = solution
         var clues = size.cellCount
-        let floor = minClues(for: target)
+        let floor = clueFloor ?? minClues(for: target)
         var order = Array(0..<size.cellCount)
         order.shuffle(using: &rng)
 
@@ -75,19 +75,13 @@ struct Generator {
                       difficulty: target, score: rating.score)
     }
 
-    func generate(target: Difficulty, using rng: inout SplitMix64, maxAttempts: Int = 400) -> Puzzle? {
+    func generate(target: Difficulty, using rng: inout SplitMix64,
+                  maxAttempts: Int = 400, clueFloor: Int? = nil) -> Puzzle? {
         for _ in 0..<maxAttempts {
-            if let p = attempt(target: target, using: &rng) { return p }
+            if let p = attempt(target: target, using: &rng, clueFloor: clueFloor) { return p }
         }
         return nil
     }
 
-    /// 小盘只有入门/简单两档有意义——4×4 撑不起数对以上的技巧。
-    var supportedDifficulties: [Difficulty] {
-        switch size.n {
-        case 4: return [.starter]
-        case 6: return [.starter, .easy]
-        default: return Difficulty.allCases
-        }
-    }
+    var supportedDifficulties: [Difficulty] { Difficulty.available(for: size) }
 }
