@@ -21,17 +21,16 @@ final class SoundManager {
         guard enabled, ensureRunning() else { return }
         let buffers = cache[feedback] ?? build(feedback)
         cache[feedback] = buffers
-        var when: AVAudioTime?
+        let step = gap(feedback)
         for (i, buffer) in buffers.enumerated() {
             if i == 0 {
                 player.scheduleBuffer(buffer, at: nil)
             } else {
                 // 琶音靠采样帧排期,不用 asyncAfter——后者在滑动/动画时会被主线程挤歪
-                let offset = AVAudioFramePosition(Double(i) * 0.11 * format.sampleRate)
+                let offset = AVAudioFramePosition(Double(i) * step * format.sampleRate)
                 let base = player.lastRenderTime.flatMap { player.playerTime(forNodeTime: $0) }
                 let start = (base?.sampleTime ?? 0) + offset
-                when = AVAudioTime(sampleTime: start, atRate: format.sampleRate)
-                player.scheduleBuffer(buffer, at: when)
+                player.scheduleBuffer(buffer, at: AVAudioTime(sampleTime: start, atRate: format.sampleRate))
             }
         }
         if !player.isPlaying { player.play() }
@@ -47,7 +46,7 @@ final class SoundManager {
         case .erase:
             return [tone(392, 0.07, 0.06)]
         case .place:
-            return [tone(659.25, 0.07, 0.09), tone(987.77, 0.09, 0.07)]
+            return [tone(659.25, 0.05, 0.09), tone(987.77, 0.045, 0.06)]
         case .wrong:
             return [tone(233.08, 0.10, 0.11), tone(174.61, 0.16, 0.10)]
         case .unitDone:
@@ -55,6 +54,16 @@ final class SoundManager {
         case .win:
             return [tone(523.25, 0.16, 0.12), tone(659.25, 0.16, 0.12),
                     tone(783.99, 0.16, 0.12), tone(1046.5, 0.34, 0.13)]
+        }
+    }
+
+    /// 填数一局要响上百次,两声之间必须贴得很紧;通关琶音才该一个个数过去。
+    private func gap(_ feedback: GameState.Feedback) -> Double {
+        switch feedback {
+        case .place: return 0.042
+        case .wrong: return 0.075
+        case .unitDone: return 0.095
+        default: return 0.11
         }
     }
 

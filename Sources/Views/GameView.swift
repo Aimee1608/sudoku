@@ -33,6 +33,7 @@ struct GameView: View {
             VStack(spacing: 12) {
                 header
                 statusRow
+                Spacer(minLength: 0)
                 BoardView(game: game, theme: theme, colorful: settings.colorfulDigits,
                           showingAnswer: showingAnswer, focus: hintFocus, onFeedback: react)
                     .padding(.horizontal, 2)
@@ -105,7 +106,7 @@ struct GameView: View {
 
     /// 一直占位,不然提示出现/消失时整个盘面会跳一下。
     private var hintBar: some View {
-        Text(hintText ?? "卡住了就点提示，它会告诉你下一格怎么想。")
+        Text(hintText ?? defaultHint)
             .font(.system(size: 13, design: theme.design))
             .foregroundColor(hintText == nil ? theme.muted : theme.ink)
             .fixedSize(horizontal: false, vertical: true)
@@ -130,6 +131,7 @@ struct GameView: View {
             toolButton("笔记", "pencil", active: game.noteMode) {
                 game.noteMode.toggle()
                 react(.note)
+                explainNoteMode()
             }
             toolButton("擦除", "eraser", enabled: game.selected != nil) {
                 react(game.erase())
@@ -185,6 +187,22 @@ struct GameView: View {
         guard hintText != nil else { return }
         hintText = nil
         hintFocus = []
+    }
+
+    /// 「笔记」这两个字自己说明不了任何事,开关的瞬间把它在干什么讲清楚。
+    private func explainNoteMode() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            hintFocus = []
+            hintText = game.noteMode
+                ? "笔记开着：点数字只在格子里记一个小字，意思是「这格也许是它」，不算真填。想好了再关掉笔记正式填。"
+                : nil
+        }
+    }
+
+    private var defaultHint: String {
+        game.noteMode
+            ? "笔记模式：点数字记小字，不算真填。"
+            : "卡住了就点提示，它会告诉你下一格怎么想。"
     }
 
     /// 小盘是给孩子做的,提示要问出来而不是讲技巧;9×9 直接用评级器写好的技巧陈述。
@@ -262,10 +280,11 @@ struct NumberPad: View {
                 let left = game.remaining(value)
                 Button { onTap(value) } label: {
                     VStack(spacing: 1) {
+                        // 笔记模式下数字缩小变淡,跟格子里那些小字是同一个样子
                         Text("\(value)")
-                            .font(.system(size: game.size.n <= 4 ? 30 : 22,
+                            .font(.system(size: (game.size.n <= 4 ? 30 : 22) * (game.noteMode ? 0.7 : 1),
                                           weight: .bold, design: theme.design))
-                            .foregroundColor(colorful ? theme.digitColor(value) : theme.ink)
+                            .foregroundColor(keyColor(value))
                         if game.size.n > 4 {
                             Text("\(max(left, 0))")
                                 .font(.system(size: 9, weight: .medium, design: theme.design))
@@ -275,7 +294,7 @@ struct NumberPad: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, game.size.n <= 4 ? 14 : 8)
-                    .background(colorful ? theme.digitColor(value).opacity(theme.isDark ? 0.16 : 0.11) : theme.panel)
+                    .background(keyBackground(value))
                     .clipShape(RoundedRectangle(cornerRadius: theme.corner, style: .continuous))
                     .opacity(left <= 0 ? 0.35 : 1)
                 }
@@ -283,6 +302,18 @@ struct NumberPad: View {
                 .accessibilityIdentifier("key-\(value)")
             }
         }
+    }
+}
+
+extension NumberPad {
+    fileprivate func keyColor(_ value: Int) -> Color {
+        if game.noteMode { return colorful ? theme.digitColor(value).opacity(0.7) : theme.note }
+        return colorful ? theme.digitColor(value) : theme.ink
+    }
+
+    fileprivate func keyBackground(_ value: Int) -> Color {
+        if game.noteMode { return theme.soft }
+        return colorful ? theme.digitColor(value).opacity(theme.isDark ? 0.16 : 0.11) : theme.panel
     }
 }
 
