@@ -5,6 +5,7 @@ final class AppSettings: ObservableObject {
     @Published var themeId: String { didSet { defaults.set(themeId, forKey: "themeId") } }
     @Published var colorfulDigits: Bool { didSet { defaults.set(colorfulDigits, forKey: "colorfulDigits") } }
     @Published var followSystem: Bool { didSet { defaults.set(followSystem, forKey: "followSystem") } }
+    @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: "soundEnabled") } }
     @Published var hapticsEnabled: Bool { didSet { defaults.set(hapticsEnabled, forKey: "hapticsEnabled") } }
 
     private let defaults = UserDefaults.standard
@@ -14,11 +15,13 @@ final class AppSettings: ObservableObject {
             "themeId": "ocean",
             "colorfulDigits": false,
             "followSystem": false,
+            "soundEnabled": true,
             "hapticsEnabled": true,
         ])
         themeId = defaults.string(forKey: "themeId") ?? "ocean"
         colorfulDigits = defaults.bool(forKey: "colorfulDigits")
         followSystem = defaults.bool(forKey: "followSystem")
+        soundEnabled = defaults.bool(forKey: "soundEnabled")
         hapticsEnabled = defaults.bool(forKey: "hapticsEnabled")
     }
 

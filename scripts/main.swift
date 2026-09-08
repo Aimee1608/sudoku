@@ -17,6 +17,7 @@ func isValid(_ grid: [Int], _ size: BoardSize) -> Bool {
     return true
 }
 
+@MainActor
 func runSmoke() {
     print("几何")
     for size in BoardSize.all {
@@ -92,6 +93,29 @@ func runSmoke() {
         }
     }
 
+    print("\n对局反馈事件")
+    let gen4 = Generator(.four)
+    var frng = SplitMix64(seed: 7)
+    if let p = gen4.generate(target: .starter, using: &frng) {
+        let game = GameState(puzzle: p, index: 0)
+        let blank = p.givens.firstIndex(of: 0)!
+        game.select(blank)
+        let wrongValue = (1...4).first { $0 != p.solution[blank] }!
+        check(game.input(wrongValue) == .wrong, "填错返回 wrong")
+        check(game.mistakes == 1, "错误计数 +1")
+        check(game.input(p.solution[blank]) != .wrong, "改对之后不再报 wrong")
+
+        var seen: [GameState.Feedback] = []
+        for i in 0..<p.size.cellCount where game.cells[i] == 0 {
+            game.select(i)
+            if let f = game.input(p.solution[i]) { seen.append(f) }
+        }
+        check(seen.contains(.unitDone), "填满一行/列/宫时给 unitDone")
+        check(seen.last == .win, "填完最后一格给 win")
+        check(game.isComplete, "标记为完成")
+        check(game.hint() == nil ? false : true, "完成后提示不再崩")
+    }
+
     print("\n" + (failures == 0 ? "全部通过" : "\(failures) 项失败"))
 }
 
@@ -142,6 +166,7 @@ let args = CommandLine.arguments
 if args.count > 1 && args[1] == "bank" {
     runBank(args.count > 2 ? args[2] : "./Banks")
 } else {
-    runSmoke()
+    // 命令行的顶层代码不在 main actor 上,而 GameState 是 @MainActor;主线程本来就是它的执行线程
+    MainActor.assumeIsolated { runSmoke() }
     exit(failures == 0 ? 0 : 1)
 }

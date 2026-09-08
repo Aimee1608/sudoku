@@ -6,6 +6,7 @@ struct BoardView: View {
     let colorful: Bool
     var showingAnswer = false
     var focus: Set<Int> = []
+    var onFeedback: (GameState.Feedback?) -> Void = { _ in }
 
     private var n: Int { game.size.n }
 
@@ -23,7 +24,7 @@ struct BoardView: View {
                                 cellView(i, edge: cell)
                                     .frame(width: cell, height: cell)
                                     .contentShape(Rectangle())
-                                    .onTapGesture { game.select(i) }
+                                    .onTapGesture { onFeedback(game.select(i)) }
                                     .accessibilityIdentifier("cell-\(i)")
                             }
                         }

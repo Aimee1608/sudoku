@@ -3,6 +3,16 @@ import Combine
 
 @MainActor
 final class GameState: ObservableObject {
+    enum Feedback: Hashable {
+        case select
+        case place
+        case wrong
+        case note
+        case erase
+        case unitDone
+        case win
+    }
+
     enum HintResult {
         case fixMistake(cell: Int)
         case step(Deduction)
@@ -84,43 +94,65 @@ final class GameState: ObservableObject {
 
     // MARK: - input
 
-    func select(_ i: Int) {
-        guard !isComplete else { return }
+    @discardableResult
+    func select(_ i: Int) -> Feedback? {
+        guard !isComplete else { return nil }
         selected = (selected == i) ? nil : i
+        return selected == nil ? nil : .select
     }
 
-    func input(_ value: Int) {
-        guard let i = selected, !isGiven(i), !isComplete else { return }
+    @discardableResult
+    func input(_ value: Int) -> Feedback? {
+        guard let i = selected, !isGiven(i), !isComplete else { return nil }
         if noteMode {
-            guard cells[i] == 0 else { return }
+            guard cells[i] == 0 else { return nil }
             let before = notes[i]
             if notes[i].contains(value) { notes[i].remove(value) } else { notes[i].insert(value) }
             undoStack.append(.note(cell: i, from: before, to: notes[i]))
-            return
+            return .note
         }
         let before = cells[i]
-        guard before != value else { return }
+        guard before != value else { return nil }
         undoStack.append(.place(cell: i, from: before, to: value))
         cells[i] = value
         notes[i] = []
-        if value != puzzle.solution[i] { mistakes += 1 }
         clearNotes(around: i, value: value)
+        if value != puzzle.solution[i] {
+            mistakes += 1
+            return .wrong
+        }
         checkCompletion()
+        if isComplete { return .win }
+        return finishedUnits(at: i) > 0 ? .unitDone : .place
     }
 
-    func erase() {
-        guard let i = selected, !isGiven(i), !isComplete else { return }
+    @discardableResult
+    func erase() -> Feedback? {
+        guard let i = selected, !isGiven(i), !isComplete else { return nil }
         if cells[i] != 0 {
             undoStack.append(.place(cell: i, from: cells[i], to: 0))
             cells[i] = 0
-        } else if !notes[i].isEmpty {
+            return .erase
+        }
+        if !notes[i].isEmpty {
             undoStack.append(.note(cell: i, from: notes[i], to: []))
             notes[i] = []
+            return .erase
+        }
+        return nil
+    }
+
+    /// 刚填的这格让几个行/列/宫凑齐了。填之前这格是空的,所以只可能是这次填满的。
+    private func finishedUnits(at i: Int) -> Int {
+        geo.unitsOfCell[i].reduce(0) { count, ui in
+            let done = geo.units[ui].allSatisfy { cells[$0] != 0 && cells[$0] == puzzle.solution[$0] }
+            return done ? count + 1 : count
         }
     }
 
-    func undo() {
-        guard let action = undoStack.popLast(), !isComplete else { return }
+    @discardableResult
+    func undo() -> Feedback? {
+        guard let action = undoStack.popLast(), !isComplete else { return nil }
         switch action {
         case let .place(cell, from, _):
             cells[cell] = from
@@ -129,6 +161,7 @@ final class GameState: ObservableObject {
             notes[cell] = from
             selected = cell
         }
+        return .erase
     }
 
     var canUndo: Bool { !undoStack.isEmpty && !isComplete }

@@ -164,6 +164,8 @@ struct SettingsView: View {
                                   isOn: $settings.colorfulDigits)
                         toggleRow("跟随系统深浅", "白天用你挑的浅色主题，晚上自动换成配对的深色主题。",
                                   isOn: $settings.followSystem)
+                        toggleRow("音效", "选格、填数、填错、凑齐一行各有不同的提示音。没有背景音乐。",
+                                  isOn: $settings.soundEnabled)
                         toggleRow("触感反馈", "点数字和按钮时轻震一下。", isOn: $settings.hapticsEnabled)
 
                         group("浅色 · 白天做题", themes: Theme.light)
@@ -229,18 +231,12 @@ struct SettingsView: View {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .strokeBorder(theme.line, lineWidth: 1)
             )
-            VStack(alignment: .leading, spacing: 0) {
-                Text(option.name)
-                    .font(.system(size: 13, weight: .semibold, design: theme.design))
-                    .foregroundColor(theme.ink)
-                Text(option.source)
-                    .font(.system(size: 9.5, design: theme.design))
-                    .foregroundColor(theme.muted)
-                    .lineLimit(1)
-            }
+            Text(option.name)
+                .font(.system(size: 13.5, weight: .semibold, design: theme.design))
+                .foregroundColor(theme.ink)
             Spacer(minLength: 0)
         }
-        .padding(9)
+        .padding(.horizontal, 10).padding(.vertical, 11)
         .background(theme.panel)
         .overlay(
             RoundedRectangle(cornerRadius: theme.corner, style: .continuous)

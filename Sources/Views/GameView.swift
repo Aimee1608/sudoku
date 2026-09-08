@@ -16,6 +16,17 @@ struct GameView: View {
 
     private var theme: Theme { settings.theme(for: scheme) }
 
+    /// 音效和触感都从同一个事件分流,免得每个调用点各写一遍、还容易漏。
+    private func react(_ event: GameState.Feedback?) {
+        guard let event else { return }
+        SoundManager.shared.play(event, enabled: settings.soundEnabled)
+        switch event {
+        case .wrong: Haptics.warn(settings.hapticsEnabled)
+        case .win: Haptics.win(settings.hapticsEnabled)
+        default: Haptics.tap(settings.hapticsEnabled)
+        }
+    }
+
     var body: some View {
         ZStack {
             theme.background.ignoresSafeArea()
@@ -23,18 +34,14 @@ struct GameView: View {
                 header
                 statusRow
                 BoardView(game: game, theme: theme, colorful: settings.colorfulDigits,
-                          showingAnswer: showingAnswer, focus: hintFocus)
+                          showingAnswer: showingAnswer, focus: hintFocus, onFeedback: react)
                     .padding(.horizontal, 2)
                 hintBar
                 tools
                 NumberPad(game: game, theme: theme, colorful: settings.colorfulDigits) { value in
-                    Haptics.tap(settings.hapticsEnabled)
-                    game.input(value)
+                    react(game.input(value))
                     clearHint()
-                    if game.isComplete {
-                        Haptics.win(settings.hapticsEnabled)
-                        progress.finish(game)
-                    }
+                    if game.isComplete { progress.finish(game) }
                 }
                 Spacer(minLength: 0)
             }
@@ -61,6 +68,7 @@ struct GameView: View {
     private var header: some View {
         HStack {
             Button {
+                react(.select)
                 progress.store(game)
                 onExit()
             } label: {
@@ -116,18 +124,23 @@ struct GameView: View {
     private var tools: some View {
         HStack(spacing: 8) {
             toolButton("撤销", "arrow.uturn.backward", enabled: game.canUndo) {
-                game.undo()
+                react(game.undo())
                 clearHint()
             }
             toolButton("笔记", "pencil", active: game.noteMode) {
                 game.noteMode.toggle()
+                react(.note)
             }
             toolButton("擦除", "eraser", enabled: game.selected != nil) {
-                game.erase()
+                react(game.erase())
                 clearHint()
             }
-            toolButton("提示", "lightbulb", enabled: !game.isComplete) { requestHint() }
+            toolButton("提示", "lightbulb", enabled: !game.isComplete) {
+                react(.select)
+                requestHint()
+            }
             toolButton("答案", "checkmark.seal", active: showingAnswer) {
+                react(.select)
                 if showingAnswer { showingAnswer = false } else { askAnswer = true }
             }
         }
@@ -135,10 +148,7 @@ struct GameView: View {
 
     private func toolButton(_ title: String, _ icon: String, enabled: Bool = true,
                             active: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: {
-            Haptics.tap(settings.hapticsEnabled)
-            action()
-        }) {
+        Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 15, weight: .medium))
                 Text(title).font(.system(size: 10, weight: .semibold, design: theme.design))

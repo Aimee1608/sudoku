@@ -60,7 +60,7 @@ struct HomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("数独练习册")
+            Text("彩虹数独")
                 .font(.system(size: 28, weight: .bold, design: theme.design))
                 .foregroundColor(theme.ink)
             Text("4×4 · 6×6 · 9×9")
