@@ -9,10 +9,13 @@ struct LevelsView: View {
     @EnvironmentObject var progress: ProgressStore
     @EnvironmentObject var library: BankLibrary
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hSize
 
     @State private var difficulty: Difficulty = .starter
 
     private var theme: Theme { settings.theme(for: scheme) }
+    private var wide: Bool { hSize == .regular }
+    private func fs(_ compact: CGFloat) -> CGFloat { compact * (wide ? 1.3 : 1) }
     private var levels: [Difficulty] { Difficulty.available(for: size) }
     private var puzzles: [Puzzle] { library.puzzles(size, difficulty) }
     private var current: Int { progress.nextIndex(size, difficulty, total: puzzles.count) }
@@ -22,15 +25,16 @@ struct LevelsView: View {
             theme.background.ignoresSafeArea()
             VStack(spacing: 0) {
                 header
-                if levels.count > 1 { tabs.padding(.horizontal, 18).padding(.bottom, 14) }
-                countRow.padding(.horizontal, 18).padding(.bottom, 10)
+                if levels.count > 1 {
+                    tabs.padding(.horizontal, wide ? 40 : 18).padding(.bottom, 14)
+                }
+                countRow.padding(.horizontal, wide ? 40 : 18).padding(.bottom, 10)
                 ScrollView {
-                    grid.padding(.horizontal, 18)
-                    freeNote.padding(18)
+                    grid.padding(.horizontal, wide ? 40 : 18)
+                    freeNote.padding(wide ? 40 : 18)
                 }
             }
-            .frame(maxWidth: 520)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: wide ? .infinity : 520)
         }
         .onAppear { difficulty = levels.first ?? .starter }
     }
@@ -46,7 +50,7 @@ struct LevelsView: View {
             .accessibilityIdentifier("back")
             Spacer()
             Text("\(size.label) 练习册")
-                .font(.system(size: 16, weight: .semibold, design: theme.design))
+                .font(.system(size: fs(16), weight: .semibold, design: theme.design))
                 .foregroundColor(theme.ink)
             Spacer()
             Color.clear.frame(width: 36, height: 36)
@@ -60,10 +64,10 @@ struct LevelsView: View {
             ForEach(levels, id: \.self) { level in
                 Button { difficulty = level } label: {
                     Text(level.label)
-                        .font(.system(size: 13, weight: .semibold, design: theme.design))
+                        .font(.system(size: fs(13), weight: .semibold, design: theme.design))
                         .foregroundColor(difficulty == level ? theme.onAccent : theme.muted)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, fs(8))
                         .background(difficulty == level ? theme.accent : theme.track)
                         .clipShape(Capsule())
                 }
@@ -82,12 +86,13 @@ struct LevelsView: View {
                 .fontWeight(.semibold)
                 .monospacedDigit()
         }
-        .font(.system(size: 12, design: theme.design))
+        .font(.system(size: fs(12), design: theme.design))
         .foregroundColor(theme.muted)
     }
 
     private var grid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
+        let columns = wide ? 10 : 5
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns), spacing: 8) {
             ForEach(puzzles.indices, id: \.self) { i in
                 Button {
                     onPlay(puzzles[i], i)
@@ -113,11 +118,11 @@ struct LevelsView: View {
             if done {
                 Image(systemName: progress.record(size, difficulty, i)?.usedAnswer == true
                       ? "eye.fill" : "checkmark")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: fs(14), weight: .bold))
                     .foregroundColor(theme.done)
             } else {
                 Text("\(i + 1)")
-                    .font(.system(size: 14, weight: .bold, design: theme.design))
+                    .font(.system(size: fs(14), weight: .bold, design: theme.design))
                     .foregroundColor(isCurrent ? theme.onAccent : theme.muted)
                     .monospacedDigit()
             }
@@ -127,7 +132,7 @@ struct LevelsView: View {
 
     private var freeNote: some View {
         Text("全部题目从第一天起就是开着的，不用解锁、不用等体力。记录只是记录：做过哪些、用了多久、错在哪。")
-            .font(.system(size: 11.5, design: theme.design))
+            .font(.system(size: fs(11.5), design: theme.design))
             .foregroundColor(theme.muted)
             .lineSpacing(2)
             .padding(12)

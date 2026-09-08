@@ -5,6 +5,7 @@ struct GameView: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var progress: ProgressStore
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hSize
 
     let onExit: () -> Void
     let onNext: (() -> Void)?
@@ -15,6 +16,11 @@ struct GameView: View {
     @State private var askAnswer = false
 
     private var theme: Theme { settings.theme(for: scheme) }
+
+    /// iPad 上不设宽度上限,盘面直接吃满屏宽;高度不够时 BoardView 的 aspectRatio
+    /// 会自己缩到剩余空间,不会把键盘顶出屏幕。
+    private var wide: Bool { hSize == .regular }
+    private func fs(_ compact: CGFloat) -> CGFloat { compact * (wide ? 1.32 : 1) }
 
     /// 音效和触感都从同一个事件分流,免得每个调用点各写一遍、还容易漏。
     private func react(_ event: GameState.Feedback?) {
@@ -46,8 +52,8 @@ struct GameView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: 560)
+            .padding(.horizontal, wide ? 40 : 16)
+            .frame(maxWidth: wide ? .infinity : 560)
 
             if game.isComplete { completionOverlay }
         }
@@ -74,18 +80,18 @@ struct GameView: View {
                 onExit()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: fs(17), weight: .semibold))
                     .foregroundColor(theme.accent)
-                    .frame(width: 36, height: 36)
+                    .frame(width: fs(36), height: fs(36))
             }
             .accessibilityIdentifier("back")
             Spacer()
             Text("\(game.size.label) 第 \(game.index + 1) 题")
-                .font(.system(size: 16, weight: .semibold, design: theme.design))
+                .font(.system(size: fs(16), weight: .semibold, design: theme.design))
                 .foregroundColor(theme.ink)
             Spacer()
             Text(game.puzzle.difficulty.label)
-                .font(.system(size: 12, weight: .semibold, design: theme.design))
+                .font(.system(size: fs(12), weight: .semibold, design: theme.design))
                 .foregroundColor(theme.accent)
                 .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(theme.soft, in: Capsule())
@@ -99,7 +105,7 @@ struct GameView: View {
             Spacer()
             Text("错 \(game.mistakes) · 提示 \(game.hintsUsed)")
         }
-        .font(.system(size: 13, weight: .medium, design: theme.design))
+        .font(.system(size: fs(13), weight: .medium, design: theme.design))
         .foregroundColor(theme.muted)
         .monospacedDigit()
     }
@@ -107,12 +113,12 @@ struct GameView: View {
     /// 一直占位,不然提示出现/消失时整个盘面会跳一下。
     private var hintBar: some View {
         Text(hintText ?? defaultHint)
-            .font(.system(size: 13, design: theme.design))
+            .font(.system(size: fs(13), design: theme.design))
             .foregroundColor(hintText == nil ? theme.muted : theme.ink)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .frame(minHeight: 54, alignment: .center)
+            .padding(.horizontal, fs(12)).padding(.vertical, fs(9))
+            .frame(minHeight: fs(54), alignment: .center)
             .background(hintText == nil ? Color.clear : theme.soft)
             .overlay(alignment: .leading) {
                 Rectangle()
@@ -152,11 +158,11 @@ struct GameView: View {
                             active: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 15, weight: .medium))
-                Text(title).font(.system(size: 10, weight: .semibold, design: theme.design))
+                Image(systemName: icon).font(.system(size: fs(15), weight: .medium))
+                Text(title).font(.system(size: fs(10), weight: .semibold, design: theme.design))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, fs(8))
             .background(active ? theme.accent : theme.panel)
             .foregroundColor(active ? theme.onAccent : (enabled ? theme.muted : theme.muted.opacity(0.4)))
             .clipShape(RoundedRectangle(cornerRadius: theme.corner, style: .continuous))
@@ -274,6 +280,9 @@ struct NumberPad: View {
     let colorful: Bool
     let onTap: (Int) -> Void
 
+    @Environment(\.horizontalSizeClass) private var hSize
+    private var scale: CGFloat { hSize == .regular ? 1.32 : 1 }
+
     /// 9 个键挤一排每个才二十来点宽,拆成 5 + 4 两排;4×4 和 6×6 一排本来就够宽。
     private var columns: Int { game.size.n == 9 ? 5 : game.size.n }
 
@@ -288,18 +297,18 @@ struct NumberPad: View {
                     VStack(spacing: 1) {
                         // 笔记模式下数字缩小变淡,跟格子里那些小字是同一个样子
                         Text("\(value)")
-                            .font(.system(size: (game.size.n <= 4 ? 30 : 26) * (game.noteMode ? 0.7 : 1),
+                            .font(.system(size: (game.size.n <= 4 ? 30 : 26) * scale * (game.noteMode ? 0.7 : 1),
                                           weight: .bold, design: theme.design))
                             .foregroundColor(keyColor(value))
                         if game.size.n > 4 {
                             Text("\(max(left, 0))")
-                                .font(.system(size: 10, weight: .medium, design: theme.design))
+                                .font(.system(size: 10 * scale, weight: .medium, design: theme.design))
                                 .foregroundColor(theme.muted)
                                 .monospacedDigit()
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, game.size.n <= 4 ? 14 : 11)
+                    .padding(.vertical, (game.size.n <= 4 ? 14 : 11) * scale)
                     .background(keyBackground(value))
                     .clipShape(RoundedRectangle(cornerRadius: theme.corner, style: .continuous))
                     .opacity(left <= 0 ? 0.35 : 1)

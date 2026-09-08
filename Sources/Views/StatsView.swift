@@ -33,7 +33,7 @@ struct StatsView: View {
                         }
                     }
                     .padding(18)
-                    .frame(maxWidth: 520)
+                    .frame(maxWidth: 620)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -149,8 +149,10 @@ struct SettingsView: View {
 
     @EnvironmentObject var settings: AppSettings
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hSize
 
     private var theme: Theme { settings.theme(for: scheme) }
+    private var wide: Bool { hSize == .regular }
 
     var body: some View {
         ZStack {
@@ -171,9 +173,8 @@ struct SettingsView: View {
                         group("浅色 · 白天做题", themes: Theme.light)
                         group("深色 · 夜里不刺眼", themes: Theme.dark)
                     }
-                    .padding(18)
-                    .frame(maxWidth: 520)
-                    .frame(maxWidth: .infinity)
+                    .padding(wide ? 40 : 18)
+                    .frame(maxWidth: wide ? .infinity : 620)
                 }
             }
         }
@@ -206,7 +207,7 @@ struct SettingsView: View {
                 .font(.system(size: 12, weight: .semibold, design: theme.design))
                 .foregroundColor(theme.muted)
                 .padding(.top, 6)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: wide ? 4 : 2), spacing: 8) {
                 ForEach(themes) { option in
                     Button { settings.themeId = option.id } label: {
                         themeChip(option)
@@ -232,7 +233,7 @@ struct SettingsView: View {
                     .strokeBorder(theme.line, lineWidth: 1)
             )
             Text(option.name)
-                .font(.system(size: 13.5, weight: .semibold, design: theme.design))
+                .font(.system(size: wide ? 15.5 : 13.5, weight: .semibold, design: theme.design))
                 .foregroundColor(theme.ink)
             Spacer(minLength: 0)
         }

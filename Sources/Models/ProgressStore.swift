@@ -43,7 +43,40 @@ final class ProgressStore: ObservableObject {
         return f
     }()
 
-    init() { load() }
+    init() {
+        load()
+        #if DEBUG
+        if CommandLine.arguments.contains("-demoProgress") { seedDemoProgress() }
+        #endif
+    }
+
+    #if DEBUG
+    /// 上架截图用的演示进度,只存在于 DEBUG 构建,不落盘。空进度的首页和统计页
+    /// 拍出来全是 0,说明不了这个 app 在干什么。
+    private func seedDemoProgress() {
+        var fresh = ProgressData()
+        let cal = Calendar.current
+        let plan: [(BoardSize, Difficulty, Int)] = [
+            (.four, .starter, 60), (.six, .starter, 60), (.six, .easy, 28),
+            (.nine, .starter, 40), (.nine, .easy, 32), (.nine, .medium, 27),
+        ]
+        var stamp = Date().addingTimeInterval(-600)
+        for (size, difficulty, count) in plan {
+            for i in 0..<count {
+                fresh.records[key(size, difficulty, i)] = LevelRecord(
+                    seconds: 90 + (i * 37) % 500, mistakes: i % 5 == 0 ? 1 : 0,
+                    usedAnswer: i % 23 == 0, finishedAt: stamp
+                )
+                stamp.addTimeInterval(-90)
+            }
+        }
+        for back in 0..<12 {
+            guard let day = cal.date(byAdding: .day, value: -back, to: Date()) else { continue }
+            fresh.dailyCounts[Self.dayFormatter.string(from: day)] = [3, 5, 2, 6, 4, 1, 3][back % 7]
+        }
+        data = fresh
+    }
+    #endif
 
     // MARK: - keys
 

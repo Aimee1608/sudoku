@@ -27,6 +27,7 @@ struct HomeView: View {
     @EnvironmentObject var progress: ProgressStore
     @EnvironmentObject var library: BankLibrary
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hSize
 
     let onPick: (BoardSize) -> Void
     let onResume: (SavedGame) -> Void
@@ -34,26 +35,43 @@ struct HomeView: View {
     let onSettings: () -> Void
 
     private var theme: Theme { settings.theme(for: scheme) }
+    private var wide: Bool { hSize == .regular }
+    private func fs(_ compact: CGFloat) -> CGFloat { compact * (wide ? 1.3 : 1) }
 
     var body: some View {
         ZStack {
             theme.background.ignoresSafeArea()
+            GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     header
-                    ForEach(BoardSize.all, id: \.n) { size in
-                        sizeCard(size)
+                    if wide {
+                        LazyVGrid(
+                            columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3),
+                            spacing: 14
+                        ) {
+                            ForEach(BoardSize.all, id: \.n) { size in
+                                sizeCard(size)
+                            }
+                        }
+                    } else {
+                        ForEach(BoardSize.all, id: \.n) { size in
+                            sizeCard(size)
+                        }
                     }
                     if let saved = progress.savedGame {
                         resumeCard(saved)
                     }
                     todayRow
-                    Spacer(minLength: 8)
+                    // iPad 上内容整体居中,这个 Spacer 会把底部两个入口顶到屏幕最下边
+                    if !wide { Spacer(minLength: 8) }
                     footer
                 }
-                .padding(18)
-                .frame(maxWidth: 520)
-                .frame(maxWidth: .infinity)
+                .padding(wide ? 40 : 18)
+                .frame(maxWidth: wide ? .infinity : 520)
+                // iPad 屏太高,内容顶在上面下面空一大片,居中摆
+                .frame(minHeight: wide ? proxy.size.height : 0, alignment: .center)
+            }
             }
         }
     }
@@ -61,10 +79,10 @@ struct HomeView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("彩虹数独")
-                .font(.system(size: 28, weight: .bold, design: theme.design))
+                .font(.system(size: fs(28), weight: .bold, design: theme.design))
                 .foregroundColor(theme.ink)
             Text("4×4 · 6×6 · 9×9")
-                .font(.system(size: 12, weight: .medium, design: theme.design))
+                .font(.system(size: fs(12), weight: .medium, design: theme.design))
                 .foregroundColor(theme.muted)
                 .tracking(1.5)
         }
@@ -75,33 +93,69 @@ struct HomeView: View {
         let done = progress.completed(size)
         let total = max(library.total(size), 1)
         return Button { onPick(size) } label: {
-            HStack(spacing: 14) {
-                sizeBadge(size)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(size.label) \(sizeTitle(size))")
-                        .font(.system(size: 16, weight: .bold, design: theme.design))
-                        .foregroundColor(theme.ink)
-                    Text(sizeSubtitle(size))
-                        .font(.system(size: 11.5, design: theme.design))
-                        .foregroundColor(theme.muted)
-                    ProgressBar(value: Double(done) / Double(total), theme: theme)
-                        .padding(.top, 5)
-                }
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text("\(done)")
-                        .font(.system(size: 18, weight: .bold, design: theme.design))
-                        .foregroundColor(theme.ink)
-                    Text("/\(library.total(size))")
-                        .font(.system(size: 11, weight: .semibold, design: theme.design))
-                        .foregroundColor(theme.muted)
-                }
-                .monospacedDigit()
+            Group {
+                if wide { wideCard(size, done: done, total: total) }
+                else { narrowCard(size, done: done, total: total) }
             }
-            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(wide ? 22 : 14)
             .themedCard(theme)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("size-\(size.n)")
+    }
+
+    /// iPad 上三张卡横排,每列只有三百多点宽,横版会把副标题压到换行——改竖版摆开。
+    private func wideCard(_ size: BoardSize, done: Int, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sizeBadge(size)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(size.label) \(sizeTitle(size))")
+                    .font(.system(size: 22, weight: .bold, design: theme.design))
+                    .foregroundColor(theme.ink)
+                Text(sizeSubtitle(size))
+                    .font(.system(size: 14, design: theme.design))
+                    .foregroundColor(theme.muted)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 6)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("\(done)")
+                    .font(.system(size: 26, weight: .bold, design: theme.design))
+                    .foregroundColor(theme.ink)
+                Text("/\(library.total(size))")
+                    .font(.system(size: 14, weight: .semibold, design: theme.design))
+                    .foregroundColor(theme.muted)
+            }
+            .monospacedDigit()
+            ProgressBar(value: Double(done) / Double(total), theme: theme)
+        }
+        .frame(height: 230, alignment: .topLeading)
+    }
+
+    private func narrowCard(_ size: BoardSize, done: Int, total: Int) -> some View {
+        HStack(spacing: 14) {
+            sizeBadge(size)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(size.label) \(sizeTitle(size))")
+                    .font(.system(size: 16, weight: .bold, design: theme.design))
+                    .foregroundColor(theme.ink)
+                Text(sizeSubtitle(size))
+                    .font(.system(size: 11.5, design: theme.design))
+                    .foregroundColor(theme.muted)
+                ProgressBar(value: Double(done) / Double(total), theme: theme)
+                    .padding(.top, 5)
+            }
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("\(done)")
+                    .font(.system(size: 18, weight: .bold, design: theme.design))
+                    .foregroundColor(theme.ink)
+                Text("/\(library.total(size))")
+                    .font(.system(size: 11, weight: .semibold, design: theme.design))
+                    .foregroundColor(theme.muted)
+            }
+            .monospacedDigit()
+        }
     }
 
     private func sizeBadge(_ size: BoardSize) -> some View {
@@ -116,7 +170,7 @@ struct HomeView: View {
             }
         }
         .padding(5)
-        .frame(width: 46, height: 46)
+        .frame(width: wide ? 64 : 46, height: wide ? 64 : 46)
         .background(theme.soft)
         .clipShape(RoundedRectangle(cornerRadius: theme.corner * 0.8, style: .continuous))
     }
@@ -142,9 +196,9 @@ struct HomeView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("继续第 \(saved.index + 1) 题")
-                        .font(.system(size: 15, weight: .bold, design: theme.design))
+                        .font(.system(size: fs(15), weight: .bold, design: theme.design))
                     Text("\(saved.size.label) \(saved.difficulty.label) · 已用 \(formatTime(saved.seconds))")
-                        .font(.system(size: 11.5, design: theme.design))
+                        .font(.system(size: fs(11.5), design: theme.design))
                         .opacity(0.85)
                 }
                 Spacer()
@@ -169,9 +223,9 @@ struct HomeView: View {
                 .fontWeight(.semibold)
                 .monospacedDigit()
         }
-        .font(.system(size: 12.5, design: theme.design))
+        .font(.system(size: fs(12.5), design: theme.design))
         .foregroundColor(theme.muted)
-        .padding(.horizontal, 15).padding(.vertical, 12)
+        .padding(.horizontal, fs(15)).padding(.vertical, fs(12))
         .overlay(
             RoundedRectangle(cornerRadius: theme.corner, style: .continuous)
                 .strokeBorder(theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
@@ -195,12 +249,12 @@ struct HomeView: View {
 
     private func footerLabel(_ title: String, _ icon: String) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: icon).font(.system(size: 13, weight: .medium))
-            Text(title).font(.system(size: 13, weight: .semibold, design: theme.design))
+            Image(systemName: icon).font(.system(size: fs(13), weight: .medium))
+            Text(title).font(.system(size: fs(13), weight: .semibold, design: theme.design))
         }
         .foregroundColor(theme.muted)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 11)
+        .padding(.vertical, fs(11))
         .themedCard(theme)
     }
 }
