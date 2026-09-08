@@ -274,26 +274,32 @@ struct NumberPad: View {
     let colorful: Bool
     let onTap: (Int) -> Void
 
+    /// 9 个键挤一排每个才二十来点宽,拆成 5 + 4 两排;4×4 和 6×6 一排本来就够宽。
+    private var columns: Int { game.size.n == 9 ? 5 : game.size.n }
+
     var body: some View {
-        HStack(spacing: 5) {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: columns),
+            spacing: 6
+        ) {
             ForEach(1...game.size.n, id: \.self) { value in
                 let left = game.remaining(value)
                 Button { onTap(value) } label: {
                     VStack(spacing: 1) {
                         // 笔记模式下数字缩小变淡,跟格子里那些小字是同一个样子
                         Text("\(value)")
-                            .font(.system(size: (game.size.n <= 4 ? 30 : 22) * (game.noteMode ? 0.7 : 1),
+                            .font(.system(size: (game.size.n <= 4 ? 30 : 26) * (game.noteMode ? 0.7 : 1),
                                           weight: .bold, design: theme.design))
                             .foregroundColor(keyColor(value))
                         if game.size.n > 4 {
                             Text("\(max(left, 0))")
-                                .font(.system(size: 9, weight: .medium, design: theme.design))
+                                .font(.system(size: 10, weight: .medium, design: theme.design))
                                 .foregroundColor(theme.muted)
                                 .monospacedDigit()
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, game.size.n <= 4 ? 14 : 8)
+                    .padding(.vertical, game.size.n <= 4 ? 14 : 11)
                     .background(keyBackground(value))
                     .clipShape(RoundedRectangle(cornerRadius: theme.corner, style: .continuous))
                     .opacity(left <= 0 ? 0.35 : 1)
