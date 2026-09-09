@@ -113,7 +113,11 @@ func runSmoke() {
         check(seen.contains(.unitDone), "填满一行/列/宫时给 unitDone")
         check(seen.last == .win, "填完最后一格给 win")
         check(game.isComplete, "标记为完成")
-        check(game.hint() == nil ? false : true, "完成后提示不再崩")
+        if case .none = game.hint() {
+            check(true, "填完之后再点提示,返回 none 不崩")
+        } else {
+            check(false, "填完之后提示应该返回 none")
+        }
     }
 
     print("\n" + (failures == 0 ? "全部通过" : "\(failures) 项失败"))
