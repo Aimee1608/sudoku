@@ -41,7 +41,6 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             theme.background.ignoresSafeArea()
-            GeometryReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     header
@@ -69,9 +68,6 @@ struct HomeView: View {
                 }
                 .padding(wide ? 40 : 18)
                 .frame(maxWidth: wide ? .infinity : 520)
-                // iPad 屏太高,内容顶在上面下面空一大片,居中摆
-                .frame(minHeight: wide ? proxy.size.height : 0, alignment: .center)
-            }
             }
         }
     }

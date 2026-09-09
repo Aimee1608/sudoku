@@ -7,8 +7,10 @@ struct StatsView: View {
     @EnvironmentObject var progress: ProgressStore
     @EnvironmentObject var library: BankLibrary
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var hSize
 
     private var theme: Theme { settings.theme(for: scheme) }
+    private var wide: Bool { hSize == .regular }
 
     var body: some View {
         ZStack {
@@ -16,72 +18,88 @@ struct StatsView: View {
             VStack(spacing: 0) {
                 NavBar(title: "我的记录", theme: theme, onBack: onBack)
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        big
-                        duo
-                        section("各册进度")
-                        ForEach(BoardSize.all, id: \.n) { size in
-                            progressRow(size)
-                        }
-                        section("最近 7 天")
-                        weekChart
-                        if !progress.recentRecords().isEmpty {
-                            section("最近完成")
-                            ForEach(progress.recentRecords(), id: \.key) { item in
-                                recentRow(item.key, item.record)
-                            }
-                        }
+                    Group {
+                        if wide { wideBody } else { narrowBody }
                     }
-                    .padding(18)
-                    .frame(maxWidth: 620)
+                    .padding(wide ? 40 : 18)
+                    .frame(maxWidth: wide ? .infinity : 620)
                     .frame(maxWidth: .infinity)
                 }
             }
         }
     }
 
-    private var big: some View {
-        VStack(spacing: 5) {
-            Text("\(progress.totalCompleted)")
-                .font(.system(size: 46, weight: .heavy, design: theme.design))
-                .foregroundColor(theme.accent)
-                .monospacedDigit()
-            Text("已完成的题目")
-                .font(.system(size: 12, design: theme.design))
-                .foregroundColor(theme.muted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(18)
-        .themedCard(theme)
-    }
-
-    private var duo: some View {
-        HStack(spacing: 10) {
-            tile("\(progress.streak)", "连续天数")
-            tile("\(progress.accuracy)%", "一次做对")
+    private var narrowBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            tile("\(progress.totalCompleted)", "已完成的题目", highlight: true, centered: true)
+            HStack(spacing: 10) {
+                tile("\(progress.streak)", "连续天数")
+                tile("\(progress.accuracy)%", "一次做对")
+            }
+            section("各册进度")
+            ForEach(BoardSize.all, id: \.n) { progressRow($0) }
+            section("最近 7 天")
+            weekChart
+            recent
         }
     }
 
-    private func tile(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+    /// iPad 一列排下来又长又空,三个数字横过来、进度和柱图并排,才吃得住屏宽。
+    private var wideBody: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 14) {
+                tile("\(progress.totalCompleted)", "已完成的题目", highlight: true)
+                tile("\(progress.streak)", "连续天数")
+                tile("\(progress.accuracy)%", "一次做对")
+            }
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 12) {
+                    section("各册进度")
+                    ForEach(BoardSize.all, id: \.n) { progressRow($0) }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 12) {
+                    section("最近 7 天")
+                    weekChart
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            recent
+        }
+    }
+
+    @ViewBuilder
+    private var recent: some View {
+        if !progress.recentRecords(limit: wide ? 6 : 3).isEmpty {
+            section("最近完成")
+            ForEach(progress.recentRecords(limit: wide ? 6 : 3), id: \.key) { item in
+                recentRow(item.key, item.record)
+            }
+        }
+    }
+
+    private func tile(_ value: String, _ label: String,
+                      highlight: Bool = false, centered: Bool = false) -> some View {
+        VStack(alignment: centered ? .center : .leading, spacing: highlight ? 5 : 1) {
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: theme.design))
-                .foregroundColor(theme.ink)
+                .font(.system(size: highlight ? (wide ? 40 : 46) : (wide ? 28 : 22),
+                              weight: highlight ? .heavy : .bold, design: theme.design))
+                .foregroundColor(highlight ? theme.accent : theme.ink)
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 11, design: theme.design))
+                .font(.system(size: wide ? 13 : (highlight ? 12 : 11), design: theme.design))
                 .foregroundColor(theme.muted)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(13)
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .padding(wide ? 22 : (highlight ? 18 : 13))
         .themedCard(theme)
     }
 
     private func section(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 12, weight: .semibold, design: theme.design))
+            .font(.system(size: wide ? 14 : 12, weight: .semibold, design: theme.design))
             .foregroundColor(theme.muted)
-            .padding(.top, 6)
+            .padding(.top, wide ? 0 : 6)
     }
 
     private func progressRow(_ size: BoardSize) -> some View {
@@ -89,14 +107,14 @@ struct StatsView: View {
         let total = max(library.total(size), 1)
         return HStack(spacing: 11) {
             Text(size.label)
-                .font(.system(size: 12, weight: .bold, design: theme.design))
+                .font(.system(size: wide ? 14 : 12, weight: .bold, design: theme.design))
                 .foregroundColor(theme.ink)
-                .frame(width: 42, alignment: .leading)
+                .frame(width: wide ? 48 : 42, alignment: .leading)
                 .monospacedDigit()
             ProgressBar(value: Double(done) / Double(total), theme: theme)
-                .frame(height: 7)
+                .frame(height: wide ? 9 : 7)
             Text("\(done)/\(library.total(size))")
-                .font(.system(size: 12, design: theme.design))
+                .font(.system(size: wide ? 14 : 12, design: theme.design))
                 .foregroundColor(theme.muted)
                 .monospacedDigit()
         }
@@ -110,15 +128,15 @@ struct StatsView: View {
                 ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                     RoundedRectangle(cornerRadius: 3)
                         .fill(theme.accent.opacity(day.count == 0 ? 0.18 : 0.85))
-                        .frame(height: max(4, 54 * CGFloat(day.count) / CGFloat(peak)))
+                        .frame(height: max(4, (wide ? 72 : 54) * CGFloat(day.count) / CGFloat(peak)))
                         .frame(maxWidth: .infinity)
                 }
             }
-            .frame(height: 54, alignment: .bottom)
+            .frame(height: wide ? 72 : 54, alignment: .bottom)
             HStack(spacing: 6) {
                 ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                     Text(day.label)
-                        .font(.system(size: 10, design: theme.design))
+                        .font(.system(size: wide ? 12 : 10, design: theme.design))
                         .foregroundColor(theme.muted)
                         .frame(maxWidth: .infinity)
                 }
@@ -133,11 +151,11 @@ struct StatsView: View {
             : key
         return HStack {
             Text(title)
-                .font(.system(size: 12, design: theme.design))
+                .font(.system(size: wide ? 14 : 12, design: theme.design))
                 .foregroundColor(theme.ink)
             Spacer()
             Text(formatTime(record.seconds))
-                .font(.system(size: 12, design: theme.design))
+                .font(.system(size: wide ? 14 : 12, design: theme.design))
                 .foregroundColor(theme.muted)
                 .monospacedDigit()
         }
