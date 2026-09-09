@@ -62,7 +62,9 @@ struct HomeView: View {
                         resumeCard(saved)
                     }
                     todayRow
-                    // iPad 上内容整体居中,这个 Spacer 会把底部两个入口顶到屏幕最下边
+                    // iPad 屏幕高,三张卡之后还剩大半屏。与其拿空白撑着,不如补一块
+                    // 真看得见积累的内容;iPhone 一屏本来就满,不加。
+                    if wide { recentSection }
                     if !wide { Spacer(minLength: 8) }
                     footer
                 }
@@ -126,7 +128,7 @@ struct HomeView: View {
             .monospacedDigit()
             ProgressBar(value: Double(done) / Double(total), theme: theme)
         }
-        .frame(height: 230, alignment: .topLeading)
+        .frame(height: 268, alignment: .topLeading)
     }
 
     private func narrowCard(_ size: BoardSize, done: Int, total: Int) -> some View {
@@ -227,6 +229,61 @@ struct HomeView: View {
                 .strokeBorder(theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         )
         .padding(.top, 5)
+    }
+
+    @ViewBuilder
+    private var recentSection: some View {
+        let items = progress.recentRecords(limit: 10)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(items.isEmpty ? "还没有做过的题" : "最近完成")
+                .font(.system(size: 14, weight: .semibold, design: theme.design))
+                .foregroundColor(theme.muted)
+                .padding(.top, 14)
+            if items.isEmpty {
+                Text("挑一册开始吧。做过的题会记在这里，也会记进「我的记录」。")
+                    .font(.system(size: 14, design: theme.design))
+                    .foregroundColor(theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .themedCard(theme)
+            } else {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2),
+                    spacing: 10
+                ) {
+                    ForEach(items, id: \.key) { item in
+                        recentRow(item.key, item.record)
+                    }
+                }
+            }
+        }
+    }
+
+    private func recentRow(_ key: String, _ record: LevelRecord) -> some View {
+        let parts = key.split(separator: "-")
+        let title = parts.count == 3
+            ? "\(parts[0])×\(parts[0]) \(Difficulty(rawValue: String(parts[1]))?.label ?? "") · 第 \((Int(parts[2]) ?? 0) + 1) 题"
+            : key
+        return HStack(spacing: 10) {
+            Image(systemName: record.usedAnswer ? "eye" : "checkmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundColor(record.usedAnswer ? theme.muted : theme.accent)
+            Text(title)
+                .font(.system(size: 14, design: theme.design))
+                .foregroundColor(theme.ink)
+            Spacer(minLength: 6)
+            if record.mistakes > 0 {
+                Text("错 \(record.mistakes)")
+                    .font(.system(size: 12, design: theme.design))
+                    .foregroundColor(theme.muted)
+            }
+            Text(formatTime(record.seconds))
+                .font(.system(size: 14, design: theme.design))
+                .foregroundColor(theme.muted)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 13)
+        .themedCard(theme)
     }
 
     private var footer: some View {

@@ -60,14 +60,18 @@ final class ProgressStore: ObservableObject {
             (.four, .starter, 60), (.six, .starter, 60), (.six, .easy, 28),
             (.nine, .starter, 40), (.nine, .easy, 32), (.nine, .medium, 27),
         ]
-        var stamp = Date().addingTimeInterval(-600)
+        let now = Date()
+        // 用真随机而不是 i 的取模:后者有周期性,「最近完成」会挤出一串连号的题
+        var rng = SplitMix64(seed: 20_260_909)
         for (size, difficulty, count) in plan {
             for i in 0..<count {
+                let ago = Double(rng.next() % 2_600_000)
                 fresh.records[key(size, difficulty, i)] = LevelRecord(
-                    seconds: 90 + (i * 37) % 500, mistakes: i % 5 == 0 ? 1 : 0,
-                    usedAnswer: i % 23 == 0, finishedAt: stamp
+                    seconds: 55 + Int(rng.next() % 545),
+                    mistakes: rng.next() % 6 == 0 ? 1 : 0,
+                    usedAnswer: rng.next() % 25 == 0,
+                    finishedAt: now.addingTimeInterval(-ago)
                 )
-                stamp.addTimeInterval(-90)
             }
         }
         for back in 0..<12 {
