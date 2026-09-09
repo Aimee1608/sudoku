@@ -125,6 +125,42 @@ xcrun simctl delete $SIM
 
 ---
 
+## 四·二、App 预览录屏
+
+App 预览是**可选**的（截图才是必需），但做了转化率更好。硬要求：**15~30 秒**、
+只能是 app 内画面、分辨率跟截图一样分档。
+
+脚本在 `scripts/shots/PreviewVideoTests.swift`（同样不进 target，用时复制到 `UITests/`），
+录制和裁剪分两步：
+
+```bash
+SIM=<模拟器UDID>
+# 先预编译,否则 xcodebuild 的准备时间会被录进去
+xcodebuild -project Sudoku.xcodeproj -scheme Sudoku -destination "id=$SIM" \
+  -derivedDataPath /tmp/sudokubuild build-for-testing
+xcrun simctl io $SIM recordVideo --codec h264 --force /tmp/preview.mov & echo $! > /tmp/recpid
+sleep 1.5
+xcodebuild -project Sudoku.xcodeproj -scheme Sudoku -destination "id=$SIM" \
+  -derivedDataPath /tmp/sudokubuild \
+  -only-testing:SudokuUITests/PreviewVideoTests test-without-building
+kill -INT $(cat /tmp/recpid)
+
+# 裁剪(passthrough,不重编码、不改分辨率);最后一个参数给了就顺便抽首中尾三帧确认
+swiftc -O scripts/shots/trim_video.swift -o /tmp/trimvid
+/tmp/trimvid /tmp/preview.mov                          # 只看时长和分辨率
+/tmp/trimvid /tmp/preview.mov /tmp/out.mov 7.0 28.0 /tmp/frames
+```
+
+两个坑：
+
+- **XCUITest 的每步操作都有查找元素的开销**，实际录出来比脚本里 sleep 的总和长一倍，
+  所以是「录长了再裁」，不是掐着 30 秒写脚本。
+- 脚本里填的数字是**题库某一题的正解，硬编码**的。改动演示路径（比如换难度档、换题号）
+  必须同步换这组数字，否则录出来满屏标红。1.0.0 用的是 `bank-9-medium` 第 28 题，
+  路径里那句 `tab-medium` 不能省。
+
+---
+
 ## 五、审核要当心的
 
 | Guideline | 现象 | 修法 |
