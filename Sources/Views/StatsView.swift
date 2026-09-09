@@ -36,6 +36,7 @@ struct StatsView: View {
                 tile("\(progress.streak)", "连续天数")
                 tile("\(progress.accuracy)%", "一次做对")
             }
+            .fixedSize(horizontal: false, vertical: true)
             section("各册进度")
             ForEach(BoardSize.all, id: \.n) { progressRow($0) }
             section("最近 7 天")
@@ -52,6 +53,7 @@ struct StatsView: View {
                 tile("\(progress.streak)", "连续天数")
                 tile("\(progress.accuracy)%", "一次做对")
             }
+            .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .top, spacing: 18) {
                 VStack(alignment: .leading, spacing: 12) {
                     section("各册进度")
@@ -70,10 +72,18 @@ struct StatsView: View {
 
     @ViewBuilder
     private var recent: some View {
-        if !progress.recentRecords(limit: wide ? 6 : 3).isEmpty {
+        let items = progress.recentRecords(limit: wide ? 8 : 3)
+        if !items.isEmpty {
             section("最近完成")
-            ForEach(progress.recentRecords(limit: wide ? 6 : 3), id: \.key) { item in
-                recentRow(item.key, item.record)
+            if wide {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 2),
+                    spacing: 10
+                ) {
+                    ForEach(items, id: \.key) { recentRow($0.key, $0.record) }
+                }
+            } else {
+                ForEach(items, id: \.key) { recentRow($0.key, $0.record) }
             }
         }
     }
@@ -92,6 +102,7 @@ struct StatsView: View {
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
         .padding(wide ? 22 : (highlight ? 18 : 13))
+        .frame(maxHeight: .infinity)
         .themedCard(theme)
     }
 
@@ -159,6 +170,10 @@ struct StatsView: View {
                 .foregroundColor(theme.muted)
                 .monospacedDigit()
         }
+        .padding(.horizontal, wide ? 16 : 0)
+        .padding(.vertical, wide ? 13 : 0)
+        .background(wide ? theme.panel : .clear)
+        .clipShape(RoundedRectangle(cornerRadius: theme.corner, style: .continuous))
     }
 }
 
