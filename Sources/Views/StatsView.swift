@@ -79,9 +79,9 @@ struct StatsView: View {
     /// alert 必须挂在按钮自己身上,挂外层容器会出现「点了没反应」。
     private var resetButton: some View {
         Button { askReset = true } label: {
-            Image(systemName: "trash")
+            Image(systemName: "arrow.counterclockwise")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(Color(hex: 0xE5484D))
+                .foregroundColor(theme.muted)
                 .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
