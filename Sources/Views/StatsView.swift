@@ -22,7 +22,7 @@ struct StatsView: View {
         ZStack {
             theme.background.ignoresSafeArea()
             VStack(spacing: 0) {
-                NavBar(title: "我的记录", theme: theme, onBack: onBack)
+                NavBar(title: "我的记录", theme: theme, onBack: onBack) { resetButton }
                 ScrollView {
                     Group {
                         if wide { wideBody } else { narrowBody }
@@ -48,7 +48,6 @@ struct StatsView: View {
             section("最近 7 天")
             weekChart
             recent
-            resetButton
         }
     }
 
@@ -74,26 +73,18 @@ struct StatsView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             recent
-            resetButton
         }
     }
 
-    /// 破坏性操作放在页面最底部,标红但不抢眼。alert 必须挂在按钮自己身上,
-    /// 挂外层容器会出现「点了没反应」。
+    /// alert 必须挂在按钮自己身上,挂外层容器会出现「点了没反应」。
     private var resetButton: some View {
         Button { askReset = true } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "trash")
-                Text("重置全部记录")
-            }
-            .font(.system(size: wide ? 15 : 14, weight: .semibold, design: theme.design))
-            .foregroundColor(Color(hex: 0xE5484D))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, wide ? 16 : 13)
-            .themedCard(theme)
+            Image(systemName: "trash")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Color(hex: 0xE5484D))
+                .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
-        .padding(.top, wide ? 18 : 12)
         .accessibilityIdentifier("reset-progress")
         .alert("重置全部记录？", isPresented: $askReset) {
             Button("取消", role: .cancel) {}
@@ -313,10 +304,19 @@ struct SettingsView: View {
     }
 }
 
-struct NavBar: View {
+struct NavBar<Trailing: View>: View {
     let title: String
     let theme: Theme
     let onBack: () -> Void
+    @ViewBuilder let trailing: Trailing
+
+    init(title: String, theme: Theme, onBack: @escaping () -> Void,
+         @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+        self.title = title
+        self.theme = theme
+        self.onBack = onBack
+        self.trailing = trailing()
+    }
 
     var body: some View {
         HStack {
@@ -332,7 +332,7 @@ struct NavBar: View {
                 .font(.system(size: 16, weight: .semibold, design: theme.design))
                 .foregroundColor(theme.ink)
             Spacer()
-            Color.clear.frame(width: 36, height: 36)
+            trailing.frame(minWidth: 36, minHeight: 36)
         }
         .padding(.horizontal, 14)
         .padding(.bottom, 6)
