@@ -9,6 +9,12 @@ struct StatsView: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.horizontalSizeClass) private var hSize
 
+    @State private var askReset = false
+
+    private var accuracyText: String {
+        progress.accuracy.map { "\($0)%" } ?? "—"
+    }
+
     private var theme: Theme { settings.theme(for: scheme) }
     private var wide: Bool { hSize == .regular }
 
@@ -34,7 +40,7 @@ struct StatsView: View {
             tile("\(progress.totalCompleted)", "已完成的题目", highlight: true, centered: true)
             HStack(spacing: 10) {
                 tile("\(progress.streak)", "连续天数")
-                tile("\(progress.accuracy)%", "一次做对")
+                tile(accuracyText, "一次做对")
             }
             .fixedSize(horizontal: false, vertical: true)
             section("各册进度")
@@ -42,6 +48,7 @@ struct StatsView: View {
             section("最近 7 天")
             weekChart
             recent
+            resetButton
         }
     }
 
@@ -51,7 +58,7 @@ struct StatsView: View {
             HStack(spacing: 14) {
                 tile("\(progress.totalCompleted)", "已完成的题目", highlight: true)
                 tile("\(progress.streak)", "连续天数")
-                tile("\(progress.accuracy)%", "一次做对")
+                tile(accuracyText, "一次做对")
             }
             .fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .top, spacing: 18) {
@@ -67,6 +74,32 @@ struct StatsView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             recent
+            resetButton
+        }
+    }
+
+    /// 破坏性操作放在页面最底部,标红但不抢眼。alert 必须挂在按钮自己身上,
+    /// 挂外层容器会出现「点了没反应」。
+    private var resetButton: some View {
+        Button { askReset = true } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "trash")
+                Text("重置全部记录")
+            }
+            .font(.system(size: wide ? 15 : 14, weight: .semibold, design: theme.design))
+            .foregroundColor(Color(hex: 0xE5484D))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, wide ? 16 : 13)
+            .themedCard(theme)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, wide ? 18 : 12)
+        .accessibilityIdentifier("reset-progress")
+        .alert("重置全部记录？", isPresented: $askReset) {
+            Button("取消", role: .cancel) {}
+            Button("重置", role: .destructive) { progress.reset() }
+        } message: {
+            Text("做过的题、用时、错误数、连续天数和没做完的存档会全部清空，无法恢复。主题、音效这些外观设置不受影响。")
         }
     }
 

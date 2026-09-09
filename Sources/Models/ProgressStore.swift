@@ -116,8 +116,9 @@ final class ProgressStore: ObservableObject {
 
     var savedGame: SavedGame? { data.saved }
 
-    var accuracy: Int {
-        guard !data.records.isEmpty else { return 100 }
+    /// 一道题都没做过时没有「正确率」可言,给 nil 让界面显示破折号,别报个满分。
+    var accuracy: Int? {
+        guard !data.records.isEmpty else { return nil }
         let clean = data.records.values.reduce(0) { $1.mistakes == 0 && !$1.usedAnswer ? $0 + 1 : $0 }
         return Int((Double(clean) / Double(data.records.count) * 100).rounded())
     }
