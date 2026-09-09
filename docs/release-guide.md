@@ -96,12 +96,25 @@ Xcode → `Window` → `Organizer` → 选中这个 archive → **Distribute App
 
 ## 四、重新生成上架截图
 
-App Store Connect 现在只强制要两种尺寸，其余会自动缩放：
+ASC 的截图槽位会随 app 支持的设备变，**以页面上实际要求的为准**。1.0.0 提交时要了这三套：
 
 | 显示屏 | 模拟器 | 像素 |
 |---|---|---|
 | iPhone 6.9" | iPhone 17 Pro Max | 1320 × 2868 |
+| iPhone 6.5" | iPhone 11 Pro Max（Xcode 里默认没有，要临时建） | 1242 × 2688 |
 | iPad 13" | iPad Pro 13-inch (M5) | 2064 × 2752 |
+
+6.5" 的模拟器要现建现删：
+
+```bash
+SIM=$(xcrun simctl create 'iPhone65Shot' \
+  com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro-Max \
+  com.apple.CoreSimulator.SimRuntime.iOS-26-5)
+# 跑完截图后
+xcrun simctl delete $SIM
+```
+
+6.5" 那档也接受 1284 × 2778（iPhone 12/13/14 Pro Max），两种任选一种。
 
 截图脚本在 `scripts/shots/`（临时 XCUITest，不进 target，用完即弃）。做法是
 `XCTAttachment(screenshot:)` 逐屏截 → `xcodebuild ... -resultBundlePath X.xcresult test`
